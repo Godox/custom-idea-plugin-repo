@@ -23,6 +23,9 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-data-rest")
 //    implementation("org.springframework.boot:spring-boot-starter-oauth2-client")
 //    implementation("org.springframework.boot:spring-boot-starter-security")
+// https://mvnrepository.com/artifact/org.jetbrains.intellij.plugins/structure-intellij
+    implementation("org.jetbrains.intellij.plugins:structure-intellij:3.238")
+    implementation("org.jetbrains.intellij:plugin-repository-rest-client:2.0.28")
 
     implementation("org.springframework.boot:spring-boot-devtools")
     implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-xml")
