@@ -58,7 +58,7 @@ class CustomIdePluginDescriptor : Serializable {
     var pluginZipFile = File("")
         set(value) {
             field = value
-            size = value.totalSpace
+            size = value.length()
         }
 
 }

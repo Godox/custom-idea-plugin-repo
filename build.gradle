@@ -1,15 +1,13 @@
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-
 plugins {
     id("org.springframework.boot") version "2.7.4"
     id("io.spring.dependency-management") version "1.0.14.RELEASE"
-    kotlin("jvm") version "1.6.21"
-    kotlin("plugin.spring") version "1.6.21"
+    id 'org.jetbrains.kotlin.jvm' version '1.6.21'
+    id 'org.jetbrains.kotlin.plugin.spring' version '1.6.21'
 }
 
 group = "fr.godox"
 version = "0.0.1-SNAPSHOT"
-java.sourceCompatibility = JavaVersion.VERSION_17
+java.sourceCompatibility = JavaVersion.VERSION_11
 
 repositories {
     mavenCentral()
@@ -45,13 +43,33 @@ dependencies {
 
 }
 
-tasks.withType<KotlinCompile> {
+compileKotlin {
     kotlinOptions {
-        freeCompilerArgs = listOf("-Xjsr305=strict")
-        jvmTarget = "17"
+        freeCompilerArgs = ["-Xjsr305=strict"]
+        jvmTarget = "11"
     }
 }
 
-tasks.withType<Test> {
-    useJUnitPlatform()
+sourceSets {
+    main.java.srcDirs += 'src/main/kotlin'
+}
+
+springBoot {
+    mainClass.set("fr.godox.customjetbrainspluginrepo.CustomJetbrainsPluginRepoApplicationKt")
+
+}
+
+bootJar {
+    destinationDirectory = file('/build/api/')
+    archiveFileName = "cjpr.jar"
+}
+
+jar {
+    destinationDirectory = file('/build/api/')
+    archiveFileName = 'cjpr.jar'
+    manifest {
+        attributes(
+            'Main-Class': 'fr.godox.customjetbrainspluginrepo.CustomJetbrainsPluginRepoApplicationKt'
+        )
+    }
 }

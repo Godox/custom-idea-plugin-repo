@@ -5,6 +5,8 @@ import com.fasterxml.jackson.dataformat.xml.XmlMapper
 import com.jetbrains.plugin.structure.intellij.beans.IdeaVersionBean
 import fr.godox.customjetbrainspluginrepo.config.REPO_ROOT_FILE
 import fr.godox.customjetbrainspluginrepo.model.CustomIdePluginDescriptor
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.core.env.Environment
 import org.springframework.stereotype.Service
 import java.io.File
 import java.nio.file.Files
@@ -14,7 +16,11 @@ import kotlin.io.path.createDirectory
 @Service
 class PluginsFileManager {
 
-    var urlRoot = "http://localhost:8080/plugins/"
+    @Autowired
+    lateinit var env: Environment
+
+    val urlRoot
+        get() = "https://${env.getProperty("server.host")}${env.getProperty("server.port")?.let { ":$it" }}/plugins/"
 
     init {
         runCatching { REPO_ROOT_FILE.toPath().createDirectory() }
@@ -53,10 +59,6 @@ class PluginsFileManager {
         } }
     }
 
-//    fun existsById(id: String): Boolean {
-//        id.
-//    }
-
     private fun findRecursive(directory: File, files: MutableCollection<File> = mutableListOf()): Collection<File> {
         directory.listFiles()?.forEach {
             if (it.isDirectory) {
@@ -86,24 +88,12 @@ class PluginsFileManager {
     }
 
     fun deleteAll(entities: MutableIterable<CustomIdePluginDescriptor>) {
-        TODO("Not yet implemented")
+        entities.forEach { delete(it) }
     }
-
-//    fun deleteAllById(ids: MutableIterable<CustomPluginIdentifier>) {
-//        TODO("Not yet implemented")
-//    }
 
     fun delete(entity: CustomIdePluginDescriptor) {
         TODO("Not yet implemented")
     }
-
-//    fun deleteById(id: CustomPluginIdentifier) {
-//        TODO("Not yet implemented")
-//    }
-
-//    fun findAllById(ids: MutableIterable<CustomPluginIdentifier>): MutableIterable<CustomIdePluginDescriptor> {
-//        TODO("Not yet implemented")
-//    }
 
 }
 
