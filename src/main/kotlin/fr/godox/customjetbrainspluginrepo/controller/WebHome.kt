@@ -1,11 +1,13 @@
 package fr.godox.customjetbrainspluginrepo.controller
 
+import com.fasterxml.jackson.dataformat.xml.XmlMapper
+import com.fasterxml.jackson.module.jaxb.JaxbAnnotationModule
 import com.jetbrains.plugin.structure.base.plugin.PluginCreationFail
 import com.jetbrains.plugin.structure.base.plugin.PluginCreationSuccess
-import com.jetbrains.plugin.structure.intellij.beans.IdeaVersionBean
 import com.jetbrains.plugin.structure.intellij.beans.PluginBean
 import com.jetbrains.plugin.structure.intellij.extractor.PluginBeanExtractor
 import com.jetbrains.plugin.structure.intellij.plugin.IdePluginManager
+import fr.godox.customjetbrainspluginrepo.config.ClientWebConfig
 import fr.godox.customjetbrainspluginrepo.model.CustomIdePluginDescriptor
 import fr.godox.customjetbrainspluginrepo.model.Plugins
 import fr.godox.customjetbrainspluginrepo.model.toCustomPluginDescriptor
@@ -37,22 +39,32 @@ class WebHome {
     @Autowired
     lateinit var idePluginManager: IdePluginManager
 
+    @Autowired
+
     @GetMapping("", produces = [MediaType.APPLICATION_XML_VALUE])
-    fun getPluginsList(request: HttpServletRequest): ResponseEntity<Plugins> {
+    fun getPluginsList(request: HttpServletRequest): ResponseEntity<String> {
         return ResponseEntity.ok(
-            Plugins(pluginsManager.findAll())
+            XmlMapper()
+                .registerModules(JaxbAnnotationModule())
+                .writeValueAsString(
+                    Plugins(pluginsManager.findAll())
+                )
         )
     }
 
     @GetMapping("/plugins/*")
-    fun getPlugin(@RequestParam id: String, @RequestParam version: String, response: HttpServletResponse): ResponseEntity<CustomIdePluginDescriptor> {
+    fun getPlugin(
+        @RequestParam id: String,
+        @RequestParam version: String,
+        response: HttpServletResponse
+    ): ResponseEntity<CustomIdePluginDescriptor> {
         return pluginsManager.findByIdAndVersion(id, version)?.let {
             response.outputStream.write(it.pluginZipFile.readBytes())
             ResponseEntity.ok().build()
         } ?: ResponseEntity.notFound().build()
     }
 
-    @PostMapping("/api/updates/upload")
+    @PostMapping("/api/updates/upload", produces = [MediaType.APPLICATION_JSON_VALUE])
     fun uploadPlugin(@RequestParam("file") file: MultipartFile, request: HttpServletRequest): ResponseEntity<*> {
         val receivedFile = saveFile(file)
         val plugin = when (val result = idePluginManager.createPlugin(receivedFile.toPath())) {
@@ -62,7 +74,7 @@ class WebHome {
         val pluginBean = PluginBeanExtractor.extractPluginBean(plugin.underlyingDocument)
         val pluginDescriptor = pluginsManager.save(pluginBean.toCustomPluginDescriptor().also {
             it.pluginZipFile = receivedFile
-        })
+        }, generatePluginUrl(pluginBean.name, pluginBean.id, request))
 
         return ResponseEntity.ok(generatePluginUpdateBean(pluginBean, pluginDescriptor, request))
     }
@@ -72,9 +84,8 @@ class WebHome {
         pluginDescriptor: CustomIdePluginDescriptor,
         request: HttpServletRequest
     ): PluginUpdateBean {
-        pluginBean.apply {
-
-            return PluginUpdateBean(
+        return pluginBean.run {
+            PluginUpdateBean(
                 (hashCode() + System.currentTimeMillis()).toInt(),
                 author = PluginUserBean(id, vendor.name, vendor.url),
                 pluginId = id.hashCode(),
@@ -94,13 +105,13 @@ class WebHome {
     }
 
     private fun generatePluginUrl(pluginName: String, pluginId: String, request: HttpServletRequest): String {
-        val pluginUrl = generatePluginPath(pluginName, request, pluginId)
-        return "https://${request.remoteHost}:${request.serverPort}${request.contextPath}$pluginUrl"
+        val pluginUrl = generatePluginPath(pluginName, pluginId)
+        return "http${if (request.isSecure) "s" else ""}://${ClientWebConfig.host}:${ClientWebConfig.port}$pluginUrl"
     }
 
-    private fun generatePluginPath(pluginName: String, request: HttpServletRequest, pluginId: String): String {
+    private fun generatePluginPath(pluginName: String, pluginId: String): String {
         val encodedName = URLEncoder.encode(pluginName, "UTF-8").replace("+", "%20")
-        return request.contextPath + "/plugin/$encodedName.zip?id=${pluginId}"
+        return "/plugins/$encodedName.zip?id=${pluginId}"
     }
 
     fun saveFile(file: MultipartFile): File {

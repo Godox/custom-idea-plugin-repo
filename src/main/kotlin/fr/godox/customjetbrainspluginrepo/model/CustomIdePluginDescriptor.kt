@@ -2,6 +2,7 @@ package fr.godox.customjetbrainspluginrepo.model
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
+import com.fasterxml.jackson.annotation.JsonProperty
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlElementWrapper
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement
@@ -14,6 +15,7 @@ import java.io.Serializable
 import javax.persistence.Column
 import javax.persistence.Convert
 import javax.persistence.Id
+import javax.xml.bind.annotation.*
 
 @JacksonXmlRootElement(localName = "plugin")
 class CustomIdePluginDescriptor : Serializable {

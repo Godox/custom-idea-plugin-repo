@@ -9,7 +9,7 @@ import java.io.Serializable
 class Plugins(
     @JacksonXmlProperty(localName = "plugin")
     @JacksonXmlElementWrapper(useWrapping = false)
-    var plugins: Iterable<CustomIdePluginDescriptor> = mutableListOf()
+    var plugin: Iterable<CustomIdePluginDescriptor> = mutableListOf()
 ) : Serializable {
 
     companion object {
