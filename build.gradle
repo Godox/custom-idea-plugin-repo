@@ -37,10 +37,11 @@ dependencies {
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
     implementation("org.springframework.session:spring-session-core")
-    implementation("org.xerial:sqlite-jdbc:3.25.2")
-    implementation("com.h2database:h2:1.4.197")
+    implementation('org.xerial:sqlite-jdbc:3.39.3.0')
+//    implementation("com.h2database:h2:1.4.197")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.security:spring-security-test")
+    implementation 'org.jetbrains.exposed:exposed:0.17.14'
 
 }
 
@@ -69,8 +70,8 @@ jar {
     destinationDirectory = file('/build/api/')
     archiveFileName = 'cjpr.jar'
     manifest {
-        attributes(
-            'Main-Class': 'fr.godox.customjetbrainspluginrepo.CustomJetbrainsPluginRepoApplicationKt'
-        )
+        attributes('Main-Class': 'fr.godox.customjetbrainspluginrepo.CustomJetbrainsPluginRepoApplicationKt')
     }
 }
+
+

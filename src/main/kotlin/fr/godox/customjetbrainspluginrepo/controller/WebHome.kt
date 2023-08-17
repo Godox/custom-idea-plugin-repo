@@ -1,7 +1,7 @@
 package fr.godox.customjetbrainspluginrepo.controller
 
+import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.dataformat.xml.XmlMapper
-import com.fasterxml.jackson.module.jaxb.JaxbAnnotationModule
 import com.jetbrains.plugin.structure.base.plugin.PluginCreationFail
 import com.jetbrains.plugin.structure.base.plugin.PluginCreationSuccess
 import com.jetbrains.plugin.structure.intellij.beans.PluginBean
@@ -10,8 +10,8 @@ import com.jetbrains.plugin.structure.intellij.plugin.IdePluginManager
 import fr.godox.customjetbrainspluginrepo.config.ClientWebConfig
 import fr.godox.customjetbrainspluginrepo.model.CustomIdePluginDescriptor
 import fr.godox.customjetbrainspluginrepo.model.Plugins
-import fr.godox.customjetbrainspluginrepo.model.toCustomPluginDescriptor
 import fr.godox.customjetbrainspluginrepo.service.PluginsFileManager
+import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.intellij.pluginRepository.model.PluginUpdateBean
 import org.jetbrains.intellij.pluginRepository.model.PluginUserBean
 import org.springframework.beans.factory.annotation.Autowired
@@ -40,15 +40,17 @@ class WebHome {
     lateinit var idePluginManager: IdePluginManager
 
     @Autowired
+    lateinit var mapper: ObjectMapper
 
     @GetMapping("", produces = [MediaType.APPLICATION_XML_VALUE])
     fun getPluginsList(request: HttpServletRequest): ResponseEntity<String> {
         return ResponseEntity.ok(
-            XmlMapper()
-                .registerModules(JaxbAnnotationModule())
-                .writeValueAsString(
-                    Plugins(pluginsManager.findAll())
-                )
+            transaction {
+                XmlMapper()
+                    .setAnnotationIntrospector(ClientWebConfig.IgnoreInheritedIntrospector())
+                    .writer().withRootName("plugins")
+                    .writeValueAsString(Plugins(pluginsManager.findAll()))
+            }
         )
     }
 
@@ -58,9 +60,12 @@ class WebHome {
         @RequestParam version: String,
         response: HttpServletResponse
     ): ResponseEntity<CustomIdePluginDescriptor> {
-        return pluginsManager.findByIdAndVersion(id, version)?.let {
-            response.outputStream.write(it.pluginZipFile.readBytes())
-            ResponseEntity.ok().build()
+        return transaction {
+            pluginsManager.findByIdAndVersion(id, version)?.let {
+                it.downloads++
+                response.outputStream.write(it.pluginZipFile.binaryStream.readBytes())
+                ResponseEntity.ok().build()
+            }
         } ?: ResponseEntity.notFound().build()
     }
 
@@ -72,9 +77,8 @@ class WebHome {
             is PluginCreationFail -> return ResponseEntity.internalServerError().body(result.toString())
         }
         val pluginBean = PluginBeanExtractor.extractPluginBean(plugin.underlyingDocument)
-        val pluginDescriptor = pluginsManager.save(pluginBean.toCustomPluginDescriptor().also {
-            it.pluginZipFile = receivedFile
-        }, generatePluginUrl(pluginBean.name, pluginBean.id, request))
+        val pluginUrl = generatePluginUrl(pluginBean.name, pluginBean.id, request)
+        val pluginDescriptor = pluginsManager.insertFromXml(pluginBean, receivedFile, pluginUrl)
 
         return ResponseEntity.ok(generatePluginUpdateBean(pluginBean, pluginDescriptor, request))
     }
@@ -88,11 +92,11 @@ class WebHome {
             PluginUpdateBean(
                 (hashCode() + System.currentTimeMillis()).toInt(),
                 author = PluginUserBean(id, vendor.name, vendor.url),
-                pluginId = id.hashCode(),
+                pluginId = pluginDescriptor.pluginId.hashCode(),
                 version = pluginVersion,
                 cdate = LocalDateTime.now().format(DateTimeFormatter.ISO_DATE),
                 channel = "",
-                downloads = 0, // TODO
+                downloads = pluginDescriptor.downloads,
                 downloadUrl = generatePluginUrl(name, id, request),
                 modules = modules.toSet(),
                 notes = changeNotes,
